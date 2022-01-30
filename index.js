@@ -17,9 +17,12 @@ async function run() {
 
   console.log({version_json})
 
-  const json = await (await fetch(version_json.raw_url)).json();
+  const response = await fetch(version_json.raw_url);
+  const jsonres = await response.json();
 
-  console.log({ json })
+
+
+  console.log({ jsonres })
 
   console.log({ data });
 }
