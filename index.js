@@ -15,7 +15,7 @@ async function getCurrentVersion(githubToken, owner, repo, verionFilePath) {
     const json = await res.json();
     return json.version;
   } catch (error) {
-    console.log({ error })
+    core.setFailed(error.message);
   }
 }
 
@@ -38,7 +38,7 @@ async function getVersionFromPullRequest(githubToken, owner, repo, pull_number) 
     return version_json.version;
 
   } catch (error) {
-    console.log('rrr', error)
+    core.setFailed(error.message);
   }
 }
 
