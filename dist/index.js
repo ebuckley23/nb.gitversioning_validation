@@ -8474,7 +8474,7 @@ const github = __nccwpck_require__(8408);
 async function run() {
   const token = await core.getIDToken();
   // const octokit = github.getOctokit(token, {baseUrl: 'https://api.github.com'});
-  const octokit = github.getOctokit(token);
+  const octokit = github.getOctokit(process.env.GITHUB_TOKEN);
 
   const { data } = await octokit.rest.pulls.get({
     owner: github.context.repo.owner,
