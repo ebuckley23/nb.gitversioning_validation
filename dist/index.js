@@ -8,6 +8,7 @@ const core = __nccwpck_require__(3722);
 const github = __nccwpck_require__(8408);
 const fetch = (__nccwpck_require__(2504)["default"])
 const cv = __nccwpck_require__(2266);
+const fs = __nccwpck_require__(7147);
 
 module.exports = {}
 
@@ -20,7 +21,16 @@ async function getCurrentVersion(githubToken, owner, repo, verionFilePath) {
     });
     const json = await res.json();
     console.log({json});
-    return json.version;
+    if (!json) return null;
+
+    const b = new Buffer(json.content.replace(/\n/g, ''), 'base64');
+    const txt = b.toString('ascii');
+    const v = JSON.parse(txt);
+    console.log({ v })
+    console.log('v.version', v.version)
+
+
+    return v.version;
   } catch (error) {
     core.setFailed(error.message);
   }
@@ -37,6 +47,7 @@ async function getVersionFromPullRequest(githubToken, owner, repo, pull_number) 
 
     const version_file_ref = data.find(x => x.filename == 'version.json');
 
+    console.log({ version_file_ref })
     if (!version_file_ref) return null;
 
     const res = await fetch(version_file_ref.raw_url);

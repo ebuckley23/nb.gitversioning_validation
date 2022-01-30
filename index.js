@@ -2,6 +2,7 @@ const core = require('@actions/core');
 const github = require('@actions/github');
 const fetch = require('node-fetch').default
 const cv = require('compare-versions');
+const fs = require('fs');
 
 module.exports = {}
 
@@ -14,7 +15,16 @@ async function getCurrentVersion(githubToken, owner, repo, verionFilePath) {
     });
     const json = await res.json();
     console.log({json});
-    return json.version;
+    if (!json) return null;
+
+    const b = new Buffer(json.content.replace(/\n/g, ''), 'base64');
+    const txt = b.toString('ascii');
+    const v = JSON.parse(txt);
+    console.log({ v })
+    console.log('v.version', v.version)
+
+
+    return v.version;
   } catch (error) {
     core.setFailed(error.message);
   }
@@ -31,6 +41,7 @@ async function getVersionFromPullRequest(githubToken, owner, repo, pull_number) 
 
     const version_file_ref = data.find(x => x.filename == 'version.json');
 
+    console.log({ version_file_ref })
     if (!version_file_ref) return null;
 
     const res = await fetch(version_file_ref.raw_url);
