@@ -13,7 +13,13 @@ async function run() {
   });
 
   const version_json = data.find(x => x.filename == 'version.json');
+  if (!version_json) return null;
+
   console.log({version_json})
+
+  const json = await (await fetch(version_json.raw_url)).json();
+
+  console.log({ json })
 
   console.log({ data });
 }
