@@ -1,6 +1,96 @@
 /******/ (() => { // webpackBootstrap
 /******/ 	var __webpack_modules__ = ({
 
+/***/ 6690:
+/***/ ((module, __unused_webpack_exports, __nccwpck_require__) => {
+
+const core = __nccwpck_require__(3722);
+const github = __nccwpck_require__(8408);
+const fetch = (__nccwpck_require__(2504)["default"])
+const cv = __nccwpck_require__(2266);
+
+module.exports = {}
+
+async function getCurrentVersion(githubToken, owner, repo, verionFilePath) {
+  try {
+    const res = await fetch(`https://api.github.com/repos/${owner}/${repo}/contents/${verionFilePath}`, {
+      headers: {
+        'Authorization': 'Bearer ' + githubToken
+      }
+    });
+    const json = await res.json();
+    return json.version;
+  } catch (error) {
+    console.log({ error })
+  }
+}
+
+async function getVersionFromPullRequest(githubToken, owner, repo, pull_number) {
+  try {
+    const octokit = github.getOctokit(githubToken);
+    const { data } = await octokit.rest.pulls.listFiles({
+      owner,
+      repo,
+      pull_number
+    })
+
+    const version_file_ref = data.find(x => x.filename == 'version.json');
+
+    if (!version_file_ref) return null;
+
+    const res = await fetch(version_file_ref.raw_url);
+    const version_json = await res.json();
+
+    return version_json.version;
+
+  } catch (error) {
+    console.log('rrr', error)
+  }
+}
+
+async function run() {
+  try {
+    const pathToVersion = core.getInput('version-json-path')
+    const token = core.getInput('github-token');
+
+    const owner = github.context.repo.owner;
+    const repo = github.context.repo.repo;
+    const pr_num = github.context.issue.number;
+    const branch = github.context.ref;
+
+    // todo. Test if this is the actual branch name
+    console.log('branch name', branch);
+  
+    const currentVersion = await getCurrentVersion(token, owner, repo, pathToVersion);
+    const prVersion = await getVersionFromPullRequest(token, owner, repo, pr_num);
+
+    if (prVersion == null) {
+      core.setFailed('No version.json found in pull request.')
+      return null;
+    }
+
+    console.log(`Current version in ${pathToVersion} is: ${currentVersion}.`)
+    console.log(`Current version in version.json is: ${prVersion}`);
+
+    const isGreater = cv.compare(prVersion, currentVersion, '>');
+    if (!isGreater) {
+      core.setFailed(`current version: ${currentVersion}. pr version: ${prVersion}`);
+      return isGreater;
+    }
+    return isGreater;
+  } catch (error) {
+    core.setFailed(error.message);
+  }
+}
+
+global.is_testing !== true && run();
+
+// used for testing
+module.exports.run = run;
+
+
+/***/ }),
+
 /***/ 140:
 /***/ (function(__unused_webpack_module, exports, __nccwpck_require__) {
 
@@ -3959,6 +4049,176 @@ function removeHook(state, name, method) {
 
   state.registry[name].splice(index, 1);
 }
+
+
+/***/ }),
+
+/***/ 2266:
+/***/ (function(module) {
+
+/* global define */
+(function (root, factory) {
+  /* istanbul ignore next */
+  if (typeof define === 'function' && define.amd) {
+    define([], factory);
+  } else if (true) {
+    module.exports = factory();
+  } else {}
+})(this, function () {
+  var semver =
+    /^[v^~<>=]*?(\d+)(?:\.([x*]|\d+)(?:\.([x*]|\d+)(?:\.([x*]|\d+))?(?:-([\da-z\-]+(?:\.[\da-z\-]+)*))?(?:\+[\da-z\-]+(?:\.[\da-z\-]+)*)?)?)?$/i;
+
+  function indexOrEnd(str, q) {
+    return str.indexOf(q) === -1 ? str.length : str.indexOf(q);
+  }
+
+  function split(v) {
+    var c = v.replace(/^v/, '').replace(/\+.*$/, '');
+    var patchIndex = indexOrEnd(c, '-');
+    var arr = c.substring(0, patchIndex).split('.');
+    arr.push(c.substring(patchIndex + 1));
+    return arr;
+  }
+
+  function tryParse(v) {
+    var n = parseInt(v, 10);
+    return isNaN(n) ? v : n;
+  }
+
+  function validateAndParse(v) {
+    if (typeof v !== 'string') {
+      throw new TypeError('Invalid argument expected string');
+    }
+    var match = v.match(semver);
+    if (!match) {
+      throw new Error(
+        "Invalid argument not valid semver ('" + v + "' received)"
+      );
+    }
+    match.shift();
+    return match;
+  }
+
+  function forceType(a, b) {
+    return typeof a !== typeof b ? [String(a), String(b)] : [a, b];
+  }
+
+  function compareStrings(a, b) {
+    var [ap, bp] = forceType(tryParse(a), tryParse(b));
+    if (ap > bp) return 1;
+    if (ap < bp) return -1;
+    return 0;
+  }
+
+  function compareSegments(a, b) {
+    for (var i = 0; i < Math.max(a.length, b.length); i++) {
+      var r = compareStrings(a[i] || 0, b[i] || 0);
+      if (r !== 0) return r;
+    }
+    return 0;
+  }
+
+  function compareVersions(v1, v2) {
+    [v1, v2].forEach(validateAndParse);
+
+    var s1 = split(v1);
+    var s2 = split(v2);
+
+    for (var i = 0; i < Math.max(s1.length - 1, s2.length - 1); i++) {
+      var n1 = parseInt(s1[i] || 0, 10);
+      var n2 = parseInt(s2[i] || 0, 10);
+
+      if (n1 > n2) return 1;
+      if (n2 > n1) return -1;
+    }
+
+    var sp1 = s1[s1.length - 1];
+    var sp2 = s2[s2.length - 1];
+
+    if (sp1 && sp2) {
+      var p1 = sp1.split('.').map(tryParse);
+      var p2 = sp2.split('.').map(tryParse);
+
+      for (i = 0; i < Math.max(p1.length, p2.length); i++) {
+        if (
+          p1[i] === undefined ||
+          (typeof p2[i] === 'string' && typeof p1[i] === 'number')
+        )
+          return -1;
+        if (
+          p2[i] === undefined ||
+          (typeof p1[i] === 'string' && typeof p2[i] === 'number')
+        )
+          return 1;
+
+        if (p1[i] > p2[i]) return 1;
+        if (p2[i] > p1[i]) return -1;
+      }
+    } else if (sp1 || sp2) {
+      return sp1 ? -1 : 1;
+    }
+
+    return 0;
+  }
+
+  var allowedOperators = ['>', '>=', '=', '<', '<='];
+
+  var operatorResMap = {
+    '>': [1],
+    '>=': [0, 1],
+    '=': [0],
+    '<=': [-1, 0],
+    '<': [-1],
+  };
+
+  function validateOperator(op) {
+    if (typeof op !== 'string') {
+      throw new TypeError(
+        'Invalid operator type, expected string but got ' + typeof op
+      );
+    }
+    if (allowedOperators.indexOf(op) === -1) {
+      throw new TypeError(
+        'Invalid operator, expected one of ' + allowedOperators.join('|')
+      );
+    }
+  }
+
+  compareVersions.validate = function (version) {
+    return typeof version === 'string' && semver.test(version);
+  };
+
+  compareVersions.compare = function (v1, v2, operator) {
+    // Validate operator
+    validateOperator(operator);
+
+    // since result of compareVersions can only be -1 or 0 or 1
+    // a simple map can be used to replace switch
+    var res = compareVersions(v1, v2);
+    return operatorResMap[operator].indexOf(res) > -1;
+  };
+
+  compareVersions.satisfies = function (v, r) {
+    // if no range operator then "="
+    var match = r.match(/^([<>=~^]+)/);
+    var op = match ? match[1] : '=';
+
+    // if gt/lt/eq then operator compare
+    if (op !== '^' && op !== '~') return compareVersions.compare(v, r, op);
+
+    // else range of either "~" or "^" is assumed
+    var [v1, v2, v3] = validateAndParse(v);
+    var [m1, m2, m3] = validateAndParse(r);
+    if (compareStrings(v1, m1) !== 0) return false;
+    if (op === '^') {
+      return compareSegments([v2, v3], [m2, m3]) >= 0;
+    }
+    if (compareStrings(v2, m2) !== 0) return false;
+    return compareStrings(v3, m3) >= 0;
+  };
+
+  return compareVersions;
+});
 
 
 /***/ }),
@@ -8465,51 +8725,12 @@ module.exports = JSON.parse('[[[0,44],"disallowed_STD3_valid"],[[45,46],"valid"]
 /******/ 	if (typeof __nccwpck_require__ !== 'undefined') __nccwpck_require__.ab = __dirname + "/";
 /******/ 	
 /************************************************************************/
-var __webpack_exports__ = {};
-// This entry need to be wrapped in an IIFE because it need to be isolated against other modules in the chunk.
-(() => {
-const core = __nccwpck_require__(3722);
-const github = __nccwpck_require__(8408);
-
-async function run() {
-  const token = await core.getInput('github-token');
-  // const octokit = github.getOctokit(token, {baseUrl: 'https://api.github.com'});
-  const octokit = github.getOctokit(token);
-
-  const { data } = await octokit.rest.pulls.listFiles({
-    owner: github.context.repo.owner,
-    repo: github.context.repo.repo,
-    pull_number: github.context.issue.number
-  });
-
-  const version_json = data.find(x => x.filename == 'version.json');
-  if (!version_json) return null;
-
-  console.log({version_json})
-
-  const response = await fetch(version_json.raw_url);
-  const jsonres = await response.json();
-
-
-
-  console.log({ jsonres })
-
-  console.log({ data });
-}
-try {
-  const pathToVersion = core.getInput('version-json-path')
-  console.log(`Path to version.json: ${pathToVersion}`);
-  // const repoUrl = `https://api.github.com/repos/${github.context.repo.repo}/pulls/${github.context.issue.number}/files`
-  // console.log({repoUrl})
-  // const payload = JSON.parse(github.context.payload, undefined, 2);
-  // console.log({payload});
-  core.setOutput('time', (new Date()).toTimeString()); // temporary for testing
-  run();
-} catch (error) {
-  core.setFailed(error.message);
-}
-})();
-
-module.exports = __webpack_exports__;
+/******/ 	
+/******/ 	// startup
+/******/ 	// Load entry module and return exports
+/******/ 	// This entry module is referenced by other modules so it can't be inlined
+/******/ 	var __webpack_exports__ = __nccwpck_require__(6690);
+/******/ 	module.exports = __webpack_exports__;
+/******/ 	
 /******/ })()
 ;
