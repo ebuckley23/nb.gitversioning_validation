@@ -1,0 +1,13 @@
+name: 'nb.gitversioning_validation'
+description: 'Validate Nerdbank.GitVersioning against pull request version file'
+inputs:
+  version-json-path: # id of input
+    description: 'Relative file path to version.json'
+    require: false
+    default: 'version.json'
+outputs:
+  time:
+    description: 'Testing purposes'
+runs:
+  using: 'node16'
+  main: 'index.js'
