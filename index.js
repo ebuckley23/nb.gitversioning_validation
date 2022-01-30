@@ -59,6 +59,9 @@ async function run() {
     const owner = github.context.repo.owner;
     const repo = github.context.repo.repo;
     const pr_num = github.context.issue.number;
+
+    console.log('Using branch: ', branch);
+    console.log('Using path to version.json: ', pathToVersion)
   
     const currentVersion = await getCurrentVersion(token, owner, repo, pathToVersion, branch);
     const prVersion = await getVersionFromPullRequest(token, owner, repo, pr_num);

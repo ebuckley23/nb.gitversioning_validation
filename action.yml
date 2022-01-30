@@ -12,7 +12,7 @@ inputs:
   branch-name: # id of input
     description: 'Branch name of version.json to compare against'
     require: false
-    default: 'master'
+    default: ${{ github.base_ref }}
 runs:
   using: 'node16'
   main: 'dist/index.js'
