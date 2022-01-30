@@ -1,6 +1,10 @@
 name: 'nb.gitversioning_validation'
 description: 'Validate Nerdbank.GitVersioning against pull request version file'
 inputs:
+  github-token: # id of input
+    description: 'Github token for authenticating client'
+    require: false
+    default: ${{ github.token }}
   version-json-path: # id of input
     description: 'Relative file path to version.json'
     require: false

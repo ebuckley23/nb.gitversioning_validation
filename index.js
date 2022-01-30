@@ -2,9 +2,9 @@ const core = require('@actions/core');
 const github = require('@actions/github');
 
 async function run() {
-  // const token = await core.getIDToken();
+  const token = await core.getInput('github-token');
   // const octokit = github.getOctokit(token, {baseUrl: 'https://api.github.com'});
-  const octokit = github.getOctokit(process.env.GITHUB_TOKEN);
+  const octokit = github.getOctokit(token);
 
   const { data } = await octokit.rest.pulls.get({
     owner: github.context.repo.owner,
