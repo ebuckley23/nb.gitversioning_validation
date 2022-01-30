@@ -12,13 +12,13 @@ const cv = __nccwpck_require__(2266);
 module.exports = {}
 
 function decodeBase64Content(base64) {
-  const buffer = new Buffer(base64.replace(/\n/g, ''), 'base64');
+  const buffer = Buffer.from(base64.replace(/\n/g, ''), 'base64'); 
   const str = buffer.toString('ascii');
   return str;
 }
-async function getCurrentVersion(githubToken, owner, repo, verionFilePath) {
+async function getCurrentVersion(githubToken, owner, repo, verionFilePath, branch) {
   try {
-    const res = await fetch(`https://api.github.com/repos/${owner}/${repo}/contents/${verionFilePath}`, {
+    const res = await fetch(`https://api.github.com/repos/${owner}/${repo}/contents/${verionFilePath}?ref=${branch}`, {
       headers: {
         'Authorization': 'Bearer ' + githubToken
       }
@@ -60,16 +60,13 @@ async function run() {
   try {
     const pathToVersion = core.getInput('version-json-path')
     const token = core.getInput('github-token');
+    const branch = core.getInput('branch_name');
 
     const owner = github.context.repo.owner;
     const repo = github.context.repo.repo;
     const pr_num = github.context.issue.number;
-    const branch = github.context.ref;
-
-    // todo. Test if this is the actual branch name
-    console.log('branch name', github.context.payload.pull_request.head);
   
-    const currentVersion = await getCurrentVersion(token, owner, repo, pathToVersion);
+    const currentVersion = await getCurrentVersion(token, owner, repo, pathToVersion, branch);
     const prVersion = await getVersionFromPullRequest(token, owner, repo, pr_num);
 
     if (prVersion == null) {
@@ -82,7 +79,7 @@ async function run() {
 
     const isGreater = cv.compare(prVersion, currentVersion, '>');
     if (!isGreater) {
-      core.setFailed(`current version: ${currentVersion}. pr version: ${prVersion}`);
+      core.setFailed(`VERSION CONFLICT: ${branch}->version.json: ${currentVersion}. pull request-->version.json: ${prVersion}`);
       return isGreater;
     }
     return isGreater;

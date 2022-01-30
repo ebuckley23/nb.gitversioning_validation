@@ -9,9 +9,10 @@ inputs:
     description: 'Relative file path to version.json'
     require: false
     default: 'version.json'
-outputs:
-  time:
-    description: 'Testing purposes'
+  branch-name: # id of input
+    description: 'Branch name of version.json to compare against'
+    require: false
+    default: 'master'
 runs:
   using: 'node16'
   main: 'dist/index.js'
