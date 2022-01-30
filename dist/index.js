@@ -19,6 +19,7 @@ async function getCurrentVersion(githubToken, owner, repo, verionFilePath) {
       }
     });
     const json = await res.json();
+    console.log({json});
     return json.version;
   } catch (error) {
     core.setFailed(error.message);
@@ -58,8 +59,12 @@ async function run() {
     const pr_num = github.context.issue.number;
     const branch = github.context.ref;
 
+    console.log('owner: ', owner);
+    console.log('repo:', repo);
+    console.log('pr_num:', pr_num);
+
     // todo. Test if this is the actual branch name
-    console.log('branch name', branch);
+    console.log('branch name', github.context);
   
     const currentVersion = await getCurrentVersion(token, owner, repo, pathToVersion);
     const prVersion = await getVersionFromPullRequest(token, owner, repo, pr_num);
@@ -70,7 +75,7 @@ async function run() {
     }
 
     console.log(`Current version in ${pathToVersion} is: ${currentVersion}.`)
-    console.log(`Current version in version.json is: ${prVersion}`);
+    console.log(`Current version in pull request version.json is: ${prVersion}`);
 
     const isGreater = cv.compare(prVersion, currentVersion, '>');
     if (!isGreater) {
