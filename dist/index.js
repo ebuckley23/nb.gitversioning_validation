@@ -8472,7 +8472,7 @@ const core = __nccwpck_require__(3722);
 const github = __nccwpck_require__(8408);
 
 async function run() {
-  const token = await core.getIDToken();
+  // const token = await core.getIDToken();
   // const octokit = github.getOctokit(token, {baseUrl: 'https://api.github.com'});
   const octokit = github.getOctokit(process.env.GITHUB_TOKEN);
 
