@@ -1,40 +1,83 @@
 const core = require('@actions/core');
 const github = require('@actions/github');
+const fetch = require('node-fetch').default
+const cv = require('compare-versions');
+
+module.exports = {}
+
+async function getCurrentVersion(githubToken, owner, repo, verionFilePath) {
+  try {
+    const res = await fetch(`https://api.github.com/repos/${owner}/${repo}/contents/${verionFilePath}`, {
+      headers: {
+        'Authorization': 'Bearer ' + githubToken
+      }
+    });
+    const json = await res.json();
+    return json.version;
+  } catch (error) {
+    console.log({ error })
+  }
+}
+
+async function getVersionFromPullRequest(githubToken, owner, repo, pull_number) {
+  try {
+    const octokit = github.getOctokit(githubToken);
+    const { data } = await octokit.rest.pulls.listFiles({
+      owner,
+      repo,
+      pull_number
+    })
+
+    const version_file_ref = data.find(x => x.filename == 'version.json');
+
+    if (!version_file_ref) return null;
+
+    const res = await fetch(version_file_ref.raw_url);
+    const version_json = await res.json();
+
+    return version_json.version;
+
+  } catch (error) {
+    console.log('rrr', error)
+  }
+}
 
 async function run() {
-  const token = await core.getInput('github-token');
-  // const octokit = github.getOctokit(token, {baseUrl: 'https://api.github.com'});
-  const octokit = github.getOctokit(token);
+  try {
+    const pathToVersion = core.getInput('version-json-path')
+    const token = core.getInput('github-token');
 
-  const { data } = await octokit.rest.pulls.listFiles({
-    owner: github.context.repo.owner,
-    repo: github.context.repo.repo,
-    pull_number: github.context.issue.number
-  });
+    const owner = github.context.repo.owner;
+    const repo = github.context.repo.repo;
+    const pr_num = github.context.issue.number;
+    const branch = github.context.ref;
 
-  const version_json = data.find(x => x.filename == 'version.json');
-  if (!version_json) return null;
+    // todo. Test if this is the actual branch name
+    console.log('branch name', branch);
+  
+    const currentVersion = await getCurrentVersion(token, owner, repo, pathToVersion);
+    const prVersion = await getVersionFromPullRequest(token, owner, repo, pr_num);
 
-  console.log({version_json})
+    if (prVersion == null) {
+      core.setFailed('No version.json found in pull request.')
+      return null;
+    }
 
-  const response = await fetch(version_json.raw_url);
-  const jsonres = await response.json();
+    console.log(`Current version in ${pathToVersion} is: ${currentVersion}.`)
+    console.log(`Current version in version.json is: ${prVersion}`);
 
-
-
-  console.log({ jsonres })
-
-  console.log({ data });
+    const isGreater = cv.compare(prVersion, currentVersion, '>');
+    if (!isGreater) {
+      core.setFailed(`current version: ${currentVersion}. pr version: ${prVersion}`);
+      return isGreater;
+    }
+    return isGreater;
+  } catch (error) {
+    core.setFailed(error.message);
+  }
 }
-try {
-  const pathToVersion = core.getInput('version-json-path')
-  console.log(`Path to version.json: ${pathToVersion}`);
-  // const repoUrl = `https://api.github.com/repos/${github.context.repo.repo}/pulls/${github.context.issue.number}/files`
-  // console.log({repoUrl})
-  // const payload = JSON.parse(github.context.payload, undefined, 2);
-  // console.log({payload});
-  core.setOutput('time', (new Date()).toTimeString()); // temporary for testing
-  run();
-} catch (error) {
-  core.setFailed(error.message);
-}
+
+global.is_testing !== true && run();
+
+// used for testing
+module.exports.run = run;
