@@ -8,10 +8,14 @@ const core = __nccwpck_require__(3722);
 const github = __nccwpck_require__(8408);
 const fetch = (__nccwpck_require__(2504)["default"])
 const cv = __nccwpck_require__(2266);
-const fs = __nccwpck_require__(7147);
 
 module.exports = {}
 
+function decodeBase64Content(base64) {
+  const buffer = new Buffer(base64.replace(/\n/g, ''), 'base64');
+  const str = buffer.toString('ascii');
+  return str;
+}
 async function getCurrentVersion(githubToken, owner, repo, verionFilePath) {
   try {
     const res = await fetch(`https://api.github.com/repos/${owner}/${repo}/contents/${verionFilePath}`, {
@@ -20,17 +24,10 @@ async function getCurrentVersion(githubToken, owner, repo, verionFilePath) {
       }
     });
     const json = await res.json();
-    console.log({json});
     if (!json) return null;
 
-    const b = new Buffer(json.content.replace(/\n/g, ''), 'base64');
-    const txt = b.toString('ascii');
-    const v = JSON.parse(txt);
-    console.log({ v })
-    console.log('v.version', v.version)
-
-
-    return v.version;
+    const version_json = JSON.parse(decodeBase64Content(json.content));
+    return version_json.version;
   } catch (error) {
     core.setFailed(error.message);
   }
@@ -47,7 +44,6 @@ async function getVersionFromPullRequest(githubToken, owner, repo, pull_number) 
 
     const version_file_ref = data.find(x => x.filename == 'version.json');
 
-    console.log({ version_file_ref })
     if (!version_file_ref) return null;
 
     const res = await fetch(version_file_ref.raw_url);
@@ -70,12 +66,8 @@ async function run() {
     const pr_num = github.context.issue.number;
     const branch = github.context.ref;
 
-    console.log('owner: ', owner);
-    console.log('repo:', repo);
-    console.log('pr_num:', pr_num);
-
     // todo. Test if this is the actual branch name
-    console.log('branch name', github.context);
+    console.log('branch name', github.context.payload.pull_request.head);
   
     const currentVersion = await getCurrentVersion(token, owner, repo, pathToVersion);
     const prVersion = await getVersionFromPullRequest(token, owner, repo, pr_num);
