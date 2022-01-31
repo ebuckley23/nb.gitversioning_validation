@@ -54,7 +54,7 @@ async function run() {
   try {
     const pathToVersion = core.getInput('version-json-path')
     const token = core.getInput('github-token');
-    const branch = core.getInput('branch_name');
+    const branch = core.getInput('branch-name');
 
     const owner = github.context.repo.owner;
     const repo = github.context.repo.repo;
